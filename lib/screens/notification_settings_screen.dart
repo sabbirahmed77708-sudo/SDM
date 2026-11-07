@@ -1,3 +1,4 @@
+import '../pull_refresh.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -97,7 +98,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
       ),
       body: ListenableBuilder(
         listenable: Listenable.merge([s, L10n.instance]),
-        builder: (context, _) => ListView(
+        builder: (context, _) => PullRefresh(onRefresh: _check, child: ListView(physics: kPullPhysics, 
           padding: const EdgeInsets.only(bottom: 32),
           children: [
             if (_allowed == false)
@@ -226,7 +227,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
               onTap: DownloadNotifier.instance.openSystemSettings,
             ),
           ],
-        ),
+        )),
       ),
     );
   }

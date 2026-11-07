@@ -1,3 +1,4 @@
+import '../pull_refresh.dart';
 import 'package:flutter/material.dart';
 
 import 'browser_controller.dart';
@@ -49,7 +50,7 @@ class _TabsDrawerState extends State<TabsDrawer> {
                       ? Center(
                           child: T('No matching tabs',
                               style: TextStyle(color: cs.outline)))
-                      : ListView.builder(
+                      : PullRefresh(child: ListView.builder(physics: kPullPhysics, 
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 8),
                           itemCount: indices.length,
@@ -67,7 +68,7 @@ class _TabsDrawerState extends State<TabsDrawer> {
                               onClose: () => b.closeTab(i),
                             );
                           },
-                        ),
+                        )),
                 ),
                 const Divider(height: 1),
                 _bottomBar(cs),

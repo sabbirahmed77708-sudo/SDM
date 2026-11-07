@@ -1,3 +1,4 @@
+import '../pull_refresh.dart';
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
@@ -312,7 +313,7 @@ class _MediaSheetState extends State<_MediaSheet> {
                           ),
                         ),
                       )
-                    : ListView.separated(
+                    : PullRefresh(child: ListView.separated(physics: kPullPhysics, 
                         padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
                         itemCount: list.length,
                         separatorBuilder: (_, __) => const Divider(height: 1),
@@ -323,7 +324,7 @@ class _MediaSheetState extends State<_MediaSheet> {
                           isBest: i == 0 && list[i].downloadable && list.length > 1,
                           onPick: widget.onPick,
                         ),
-                      ),
+                      )),
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),

@@ -1,3 +1,4 @@
+import '../pull_refresh.dart';
 import 'package:flutter/material.dart';
 
 import '../l10n.dart';
@@ -52,7 +53,7 @@ class _AboutScreenState extends State<AboutScreen> {
           // only the version; the build number stays inside the app
           final ver =
               up.version.isEmpty ? '' : '${tr('Version')} ${up.version}';
-          return ListView(
+          return PullRefresh(onRefresh: _manualCheck, child: ListView(physics: kPullPhysics, 
             padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
             children: [
               Center(
@@ -92,7 +93,7 @@ class _AboutScreenState extends State<AboutScreen> {
               const SizedBox(height: 26),
               _updateCard(cs),
             ],
-          );
+          ));
         },
       ),
     );

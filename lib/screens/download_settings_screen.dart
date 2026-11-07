@@ -1,3 +1,4 @@
+import '../pull_refresh.dart';
 import 'package:flutter/material.dart';
 
 import '../download_manager.dart';
@@ -107,7 +108,7 @@ class DownloadSettingsScreen extends StatelessWidget {
       appBar: AppBar(title: const T('Download speed & queue')),
       body: ListenableBuilder(
         listenable: Listenable.merge([dm, L10n.instance]),
-        builder: (context, _) => ListView(
+        builder: (context, _) => PullRefresh(child: ListView(physics: kPullPhysics, 
           padding: const EdgeInsets.only(bottom: 32),
           children: [
             _head(context, 'Connection'),
@@ -198,7 +199,7 @@ class DownloadSettingsScreen extends StatelessWidget {
                 title: Text(tr('Browser is open: the lower limit applies now')),
               ),
           ],
-        ),
+        )),
       ),
     );
   }

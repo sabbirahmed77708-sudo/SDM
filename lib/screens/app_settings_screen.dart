@@ -1,3 +1,4 @@
+import '../pull_refresh.dart';
 import 'package:flutter/material.dart';
 
 import '../browser/browser_controller.dart';
@@ -21,7 +22,7 @@ class AppSettingsScreen extends StatelessWidget {
       appBar: AppBar(title: const T('Settings')),
       body: ListenableBuilder(
         listenable: Listenable.merge([dm, browser, L10n.instance]),
-        builder: (context, _) => ListView(
+        builder: (context, _) => PullRefresh(child: PullRefresh(child: ListView(physics: kPullPhysics, physics: kPullPhysics, 
           children: [
             SwitchListTile(
               secondary: const Icon(Icons.wifi_rounded),
@@ -107,7 +108,7 @@ class AppSettingsScreen extends StatelessWidget {
               onTap: () => showAboutDrom(context),
             ),
           ],
-        ),
+        ))),
       ),
     );
   }

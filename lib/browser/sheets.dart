@@ -1,3 +1,4 @@
+import '../pull_refresh.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -87,7 +88,7 @@ class _UrlListSheetState extends State<_UrlListSheet> {
                 ? Center(
                     child: Text(tr(widget.emptyText),
                         style: TextStyle(color: cs.outline)))
-                : ListView.separated(
+                : PullRefresh(child: ListView.separated(physics: kPullPhysics, 
                     itemCount: list.length,
                     separatorBuilder: (_, __) => const Divider(height: 1),
                     itemBuilder: (_, i) {
@@ -109,7 +110,7 @@ class _UrlListSheetState extends State<_UrlListSheet> {
                         ),
                       );
                     },
-                  ),
+                  )),
           ),
         ],
       ),
@@ -369,7 +370,7 @@ class _HistoryScreenState extends State<HistoryScreen>
       return Center(
           child: Text(tr(empty), style: TextStyle(color: cs.outline)));
     }
-    return ListView.separated(
+    return PullRefresh(child: ListView.separated(physics: kPullPhysics, 
       itemCount: items.length,
       separatorBuilder: (_, __) => const Divider(height: 1),
       itemBuilder: (_, i) {
@@ -398,7 +399,7 @@ class _HistoryScreenState extends State<HistoryScreen>
           },
         );
       },
-    );
+    ));
   }
 }
 
@@ -413,7 +414,7 @@ class BrowserSettingsScreen extends StatelessWidget {
       appBar: AppBar(title: const T('Settings')),
       body: ListenableBuilder(
         listenable: browser,
-        builder: (context, _) => ListView(
+        builder: (context, _) => PullRefresh(child: ListView(physics: kPullPhysics, 
           children: [
             SwitchListTile(
               title: const T('Block ads'),
@@ -460,7 +461,7 @@ class BrowserSettingsScreen extends StatelessWidget {
               onTap: () => confirmClearData(context, browser),
             ),
           ],
-        ),
+        )),
       ),
     );
   }

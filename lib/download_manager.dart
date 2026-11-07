@@ -68,6 +68,7 @@ class _Run {
   int startBytes = 0;
   int nextFree = 0; // speed limit pacing (microseconds)
   double speed = 0; // current speed (bytes/s), for the fair-share check
+  final int startedAt = DateTime.now().microsecondsSinceEpoch;
   int lowSince = 0; // since when it is far below its fair share (microseconds)
 
   /// Set when the download itself failed and the other pieces were stopped
@@ -241,13 +242,21 @@ class DownloadManager extends ChangeNotifier {
   double _aggPeak = 0; // best total speed seen with the current set of downloads
   int _peakRuns = 0;
 
-  /// Bytes/s one running download may use so that all of them get the same
-  /// speed (0 = no cap). The total is the best total speed measured; each
-  /// download gets an equal part of it (+10 % so the total can still grow).
-  /// A download that stays far below its part for 8 s (a slow server) is not
-  /// slowed, and what it leaves unused goes to the others.
+  /// Bytes/s one running download may use so that all of them keep about the
+  /// same speed (0 = no cap).
+  ///
+  /// Every download is held to a little above the CURRENT average of all
+  /// running downloads, so a fast one can never starve a slower one: what the
+  /// fast one gives up goes to the others and the speeds meet in the middle.
+  /// A download that was started a few seconds ago counts even while its speed
+  /// is still near zero (that is exactly the starved one). Only a download
+  /// that stays far below the average for 15 s (a really slow server) is left
+  /// alone, and what it cannot use goes to the others.
   double _fairShare(_Run run) {
-    final active = _runs.values.where((r) => r.speed > 0).toList();
+    final now = DateTime.now().microsecondsSinceEpoch;
+    final active = _runs.values
+        .where((r) => r.speed > 0 || now - r.startedAt > 6000000)
+        .toList();
     final n = active.length;
     if (n < 2) {
       _aggPeak = 0;
@@ -263,14 +272,13 @@ class DownloadManager extends ChangeNotifier {
       sum += r.speed;
     }
     if (sum > _aggPeak) _aggPeak = sum;
-    if (_aggPeak < 200 * 1024) return 0; // not measured yet / tiny
-    final fair = _aggPeak / n;
-    final now = DateTime.now().microsecondsSinceEpoch;
-    const slowFor = 8000000; // 8 s in microseconds
+    final mean = sum / n;
+    if (mean < 100 * 1024) return 0; // not measured yet / tiny
+    const slowFor = 15000000; // 15 s in microseconds
     var limitedSum = 0.0;
     var limited = 0;
     for (final r in active) {
-      if (r.speed < fair * 0.6) {
+      if (r.speed < mean * 0.25) {
         if (r.lowSince == 0) r.lowSince = now;
       } else {
         r.lowSince = 0;
@@ -281,11 +289,12 @@ class DownloadManager extends ChangeNotifier {
       }
     }
     if (run.lowSince != 0 && now - run.lowSince > slowFor) return 0;
-    var cap = fair;
+    var cap = mean * 1.1;
     if (limited > 0 && limited < n) {
-      cap = (_aggPeak - limitedSum) / (n - limited);
+      final rest = (_aggPeak - limitedSum) / (n - limited) * 1.1;
+      if (rest > cap) cap = rest;
     }
-    return cap * 1.1;
+    return cap;
   }
 
   /// Starts waiting downloads while there is room.

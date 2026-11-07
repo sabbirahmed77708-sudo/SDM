@@ -1,3 +1,4 @@
+import 'pull_refresh.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -249,7 +250,7 @@ class _FolderPickerState extends State<_FolderPicker> {
         ),
       );
     }
-    return ListView.builder(
+    return PullRefresh(onRefresh: () => _open(_cwd), child: ListView.builder(physics: kPullPhysics, 
       itemCount: _dirs.length,
       itemBuilder: (_, i) {
         final d = _dirs[i];
@@ -261,6 +262,6 @@ class _FolderPickerState extends State<_FolderPicker> {
           onTap: () => _open(d.path),
         );
       },
-    );
+    ));
   }
 }
