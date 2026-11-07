@@ -27,7 +27,7 @@
 
 প্রতিটি push-এ একটি করে নতুন Release হয়। অ্যাপের **About → Check for update** সেই Release দেখে নতুন ভার্সন আছে কিনা জানায়, আর সেখান থেকেই ডাউনলোড করা যায়।
 
-> সব build একই সাইনিং কি (`tool/debug.keystore`) দিয়ে সাইন হয়, তাই নতুন APK পুরোনোটার ওপর ইনস্টল হয়ে যায় (আনইনস্টল লাগে না)।
+> সব build একই গোপন সাইনিং কি দিয়ে সাইন হয় (কি-টা GitHub Secrets-এ থাকে: `SDM_KEYSTORE_B64`, `SDM_STORE_PASS`, `SDM_KEY_ALIAS`; রিপোতে নেই)। তাই নতুন APK পুরোনোটার ওপর ইনস্টল হয়ে যায় (আনইনস্টল লাগে না)। কি-ফাইল হারালে অ্যাপ একবার আনইনস্টল করে নতুন কি দিয়ে বানাতে হবে। নতুন রিপোতে বিল্ড করতে হলে ওই তিনটা Secret আবার বসাতে হবে।
 
 ## প্রথমবার চালানোর সময়
 - "সব ফাইল অ্যাক্সেস" (All files access) অনুমতি চাইবে। দিলে ফাইল `Download/FastGet`-এ যাবে; না দিলে অ্যাপের নিজস্ব ফোল্ডারে সেভ হবে।
@@ -42,7 +42,7 @@
 ```bash
 flutter create --platforms=android --org com.fastget --project-name fastget .
 python3 tool/patch_manifest.py
-mkdir -p ~/.android && cp tool/debug.keystore ~/.android/debug.keystore
+SDM_KEYSTORE=/path/sdm-release.keystore SDM_STORE_PASS=... SDM_KEY_ALIAS=sdm python3 tool/patch_signing.py
 flutter pub get
 dart run flutter_launcher_icons
 flutter build apk --release

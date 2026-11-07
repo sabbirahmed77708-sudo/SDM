@@ -1,4 +1,4 @@
-"""Makes the release build use DROM's own fixed key (tool/debug.keystore).
+"""Makes the release build use DROM's own fixed key (private key from CI secrets).
 
 Without this, Gradle signs every build with a freshly generated "Android
 Debug" key, so Android refuses to install a new build over the old one
@@ -6,12 +6,14 @@ Debug" key, so Android refuses to install a new build over the old one
 import os
 import sys
 
-# The release key comes from CI secrets (SDM_KEYSTORE / SDM_STORE_PASS /
-# SDM_KEY_ALIAS / SDM_KEY_PASS). Without them the old key in the repo is used,
-# so a build never breaks, but it is NOT a private key any more.
-KEYSTORE = os.path.abspath(os.environ.get("SDM_KEYSTORE") or "tool/debug.keystore")
-STORE_PASS = os.environ.get("SDM_STORE_PASS") or "android"
-KEY_ALIAS = os.environ.get("SDM_KEY_ALIAS") or "androiddebugkey"
+# The private release key comes from CI secrets (see the workflow):
+# SDM_KEYSTORE / SDM_STORE_PASS / SDM_KEY_ALIAS / SDM_KEY_PASS.
+for need in ("SDM_KEYSTORE", "SDM_STORE_PASS", "SDM_KEY_ALIAS"):
+    if not os.environ.get(need):
+        sys.exit(f"{need} is not set")
+KEYSTORE = os.path.abspath(os.environ["SDM_KEYSTORE"])
+STORE_PASS = os.environ["SDM_STORE_PASS"]
+KEY_ALIAS = os.environ["SDM_KEY_ALIAS"]
 KEY_PASS = os.environ.get("SDM_KEY_PASS") or STORE_PASS
 if not os.path.exists(KEYSTORE):
     sys.exit(f"{KEYSTORE} not found")

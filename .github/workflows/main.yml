@@ -41,8 +41,8 @@ jobs:
 
       # Same signing key for every build, so a new APK installs over the old one
       # (update without uninstalling). The private key lives in GitHub secrets
-      # (SDM_KEYSTORE_B64, SDM_STORE_PASS, SDM_KEY_ALIAS); without them the old
-      # key from the repo is used so the build still works.
+      # (SDM_KEYSTORE_B64, SDM_STORE_PASS, SDM_KEY_ALIAS); without them the
+      # build stops, so an APK is never signed with a wrong key.
       - name: Use the fixed signing key
         env:
           KS_B64: ${{ secrets.SDM_KEYSTORE_B64 }}
@@ -71,11 +71,8 @@ jobs:
             } >> "$GITHUB_ENV"
             echo "Signing with the private release key"
           else
-            echo "::warning::SDM_KEYSTORE_B64 secret missing: signing with the OLD public key"
-            echo "SDM_KEYSTORE=$PWD/tool/debug.keystore" >> "$GITHUB_ENV"
-            echo "SDM_STORE_PASS=android" >> "$GITHUB_ENV"
-            echo "SDM_KEY_ALIAS=androiddebugkey" >> "$GITHUB_ENV"
-            echo "SDM_KEY_PASS=android" >> "$GITHUB_ENV"
+            echo "::error::The signing secrets are missing (SDM_KEYSTORE_B64, SDM_STORE_PASS, SDM_KEY_ALIAS). See README."
+            exit 1
           fi
 
       # Gradle would otherwise sign with a new random key on every build
