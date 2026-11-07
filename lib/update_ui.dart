@@ -26,7 +26,14 @@ class UpdateActionButton extends StatelessWidget {
   const UpdateActionButton({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ListenableBuilder(
+        // listens by itself: a `const` widget is never rebuilt by its parent,
+        // which is why the progress used to freeze until the next check
+        listenable: UpdateChecker.instance,
+        builder: (context, _) => _body(context),
+      );
+
+  Widget _body(BuildContext context) {
     final up = UpdateChecker.instance;
     final cs = Theme.of(context).colorScheme;
     switch (up.phase) {
@@ -165,7 +172,12 @@ class UpdateBanner extends StatelessWidget {
   const UpdateBanner({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ListenableBuilder(
+        listenable: UpdateChecker.instance,
+        builder: (context, _) => _body(context),
+      );
+
+  Widget _body(BuildContext context) {
     final up = UpdateChecker.instance;
     final info = up.available;
     if (info == null || !up.showReadyBanner) return const SizedBox.shrink();
