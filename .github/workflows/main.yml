@@ -53,6 +53,15 @@ jobs:
             # secrets pasted on a phone often carry a stray newline / space
             KS_PASS=$(printf '%s' "$KS_PASS" | tr -d '\r\n ')
             KS_ALIAS=$(printf '%s' "$KS_ALIAS" | tr -d '\r\n ')
+            # a wrong value must stop the build here, without printing it
+            if ! printf '%s' "$KS_ALIAS" | grep -Eq '^[A-Za-z0-9_-]{1,40}$'; then
+              echo "::error::Secret SDM_KEY_ALIAS must be just a short name (sdm). Edit that secret."
+              exit 1
+            fi
+            if ! printf '%s' "$KS_PASS" | grep -Eq '^[A-Za-z0-9]{8,64}$'; then
+              echo "::error::Secret SDM_STORE_PASS must be just the password (letters and digits). Edit that secret."
+              exit 1
+            fi
             printf '%s' "$KS_B64" | tr -d '\r\n ' | base64 -d > "$RUNNER_TEMP/sdm-release.keystore"
             {
               echo "SDM_KEYSTORE=$RUNNER_TEMP/sdm-release.keystore"
