@@ -67,6 +67,8 @@ class _Run {
   List<int> segBytes = [];
   int startBytes = 0;
   int nextFree = 0; // speed limit pacing (microseconds)
+  double speed = 0; // current speed (bytes/s), for the fair-share check
+  int lowSince = 0; // since when it is far below its fair share (microseconds)
 
   /// Set when the download itself failed and the other pieces were stopped
   /// (as opposed to the person pausing / removing it).
@@ -220,13 +222,70 @@ class DownloadManager extends ChangeNotifier {
   /// share of the limit. Awaiting here makes the network wait too.
   Future<void> _pace(_Run run, int bytes) async {
     final lim = effectiveLimit;
-    if (lim <= 0) return;
-    final share = lim / (_runs.isEmpty ? 1 : _runs.length);
+    double share;
+    if (lim > 0) {
+      share = lim / (_runs.isEmpty ? 1 : _runs.length);
+    } else {
+      // no limit set: still keep the running downloads even, so one cannot
+      // grab the whole connection and starve the other
+      share = _fairShare(run);
+      if (share <= 0) return;
+    }
     final now = DateTime.now().microsecondsSinceEpoch;
     if (run.nextFree < now) run.nextFree = now;
     run.nextFree += (bytes / share * 1000000).round();
     final wait = run.nextFree - now;
     if (wait > 4000) await Future.delayed(Duration(microseconds: wait));
+  }
+
+  double _aggPeak = 0; // best total speed seen with the current set of downloads
+  int _peakRuns = 0;
+
+  /// Bytes/s one running download may use so that all of them get the same
+  /// speed (0 = no cap). The total is the best total speed measured; each
+  /// download gets an equal part of it (+10 % so the total can still grow).
+  /// A download that stays far below its part for 8 s (a slow server) is not
+  /// slowed, and what it leaves unused goes to the others.
+  double _fairShare(_Run run) {
+    final active = _runs.values.where((r) => r.speed > 0).toList();
+    final n = active.length;
+    if (n < 2) {
+      _aggPeak = 0;
+      _peakRuns = n;
+      return 0;
+    }
+    if (_peakRuns != n) {
+      _peakRuns = n;
+      _aggPeak = 0;
+    }
+    var sum = 0.0;
+    for (final r in active) {
+      sum += r.speed;
+    }
+    if (sum > _aggPeak) _aggPeak = sum;
+    if (_aggPeak < 200 * 1024) return 0; // not measured yet / tiny
+    final fair = _aggPeak / n;
+    final now = DateTime.now().microsecondsSinceEpoch;
+    const slowFor = 8000000; // 8 s in microseconds
+    var limitedSum = 0.0;
+    var limited = 0;
+    for (final r in active) {
+      if (r.speed < fair * 0.6) {
+        if (r.lowSince == 0) r.lowSince = now;
+      } else {
+        r.lowSince = 0;
+      }
+      if (r.lowSince != 0 && now - r.lowSince > slowFor) {
+        limitedSum += r.speed;
+        limited++;
+      }
+    }
+    if (run.lowSince != 0 && now - run.lowSince > slowFor) return 0;
+    var cap = fair;
+    if (limited > 0 && limited < n) {
+      cap = (_aggPeak - limitedSum) / (n - limited);
+    }
+    return cap * 1.1;
   }
 
   /// Starts waiting downloads while there is room.
@@ -806,6 +865,7 @@ class DownloadManager extends ChangeNotifier {
       final cur = item.downloaded;
       final inst = (cur - last) / dt;
       item.speed = item.speed == 0 ? inst : item.speed * 0.6 + inst * 0.4;
+      run.speed = item.speed;
       last = cur;
       lastTime = now;
       notifyListeners();
