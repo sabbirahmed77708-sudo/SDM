@@ -50,7 +50,10 @@ jobs:
           KS_ALIAS: ${{ secrets.SDM_KEY_ALIAS }}
         run: |
           if [ -n "$KS_B64" ]; then
-            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/sdm-release.keystore"
+            # secrets pasted on a phone often carry a stray newline / space
+            KS_PASS=$(printf '%s' "$KS_PASS" | tr -d '\r\n ')
+            KS_ALIAS=$(printf '%s' "$KS_ALIAS" | tr -d '\r\n ')
+            printf '%s' "$KS_B64" | tr -d '\r\n ' | base64 -d > "$RUNNER_TEMP/sdm-release.keystore"
             {
               echo "SDM_KEYSTORE=$RUNNER_TEMP/sdm-release.keystore"
               echo "SDM_STORE_PASS=$KS_PASS"
