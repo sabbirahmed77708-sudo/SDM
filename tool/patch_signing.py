@@ -6,9 +6,15 @@ Debug" key, so Android refuses to install a new build over the old one
 import os
 import sys
 
-KEYSTORE = os.path.abspath("tool/debug.keystore")
+# The release key comes from CI secrets (SDM_KEYSTORE / SDM_STORE_PASS /
+# SDM_KEY_ALIAS / SDM_KEY_PASS). Without them the old key in the repo is used,
+# so a build never breaks, but it is NOT a private key any more.
+KEYSTORE = os.path.abspath(os.environ.get("SDM_KEYSTORE") or "tool/debug.keystore")
+STORE_PASS = os.environ.get("SDM_STORE_PASS") or "android"
+KEY_ALIAS = os.environ.get("SDM_KEY_ALIAS") or "androiddebugkey"
+KEY_PASS = os.environ.get("SDM_KEY_PASS") or STORE_PASS
 if not os.path.exists(KEYSTORE):
-    sys.exit("tool/debug.keystore not found")
+    sys.exit(f"{KEYSTORE} not found")
 
 kts = "android/app/build.gradle.kts"
 groovy = "android/app/build.gradle"
@@ -32,9 +38,9 @@ if kind == "kts":
         "    signingConfigs {\n"
         '        create("drom_fixed") {\n'
         f'            storeFile = file("{KEYSTORE}")\n'
-        '            storePassword = "android"\n'
-        '            keyAlias = "androiddebugkey"\n'
-        '            keyPassword = "android"\n'
+        f'            storePassword = "{STORE_PASS}"\n'
+        f'            keyAlias = "{KEY_ALIAS}"\n'
+        f'            keyPassword = "{KEY_PASS}"\n'
         "        }\n"
         "    }\n"
     )
@@ -48,9 +54,9 @@ else:
         "    signingConfigs {\n"
         "        drom_fixed {\n"
         f"            storeFile file('{KEYSTORE}')\n"
-        "            storePassword 'android'\n"
-        "            keyAlias 'androiddebugkey'\n"
-        "            keyPassword 'android'\n"
+        f"            storePassword '{STORE_PASS}'\n"
+        f"            keyAlias '{KEY_ALIAS}'\n"
+        f"            keyPassword '{KEY_PASS}'\n"
         "        }\n"
         "    }\n"
     )
