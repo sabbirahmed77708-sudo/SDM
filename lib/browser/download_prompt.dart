@@ -112,12 +112,9 @@ Future<bool> showDownloadPrompt(
           final opacity = out ? (v * 1.8).clamp(0.0, 1.0) : v;
           return Opacity(
             opacity: opacity,
-            child: Transform(
-              alignment: Alignment.center,
-              transform: Matrix4.identity()
-                ..translate(dx, dy)
-                ..scale(scale, scale),
-              child: ch,
+            child: Transform.translate(
+              offset: Offset(dx, dy),
+              child: Transform.scale(scale: scale, child: ch),
             ),
           );
         },

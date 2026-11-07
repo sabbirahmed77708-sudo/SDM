@@ -1,7 +1,6 @@
 # SDM Browser – manual test checklist
 
-This code was written without being able to compile or run it. Please go through
-this list on a real phone and report anything that fails.
+Go through this list on a real phone after a new build and report anything that fails.
 
 ## Tabs and live panel
 - [ ] Open the browser: homepage shows SDM wordmark, search box, shortcuts.
@@ -20,13 +19,13 @@ this list on a real phone and report anything that fails.
 
 ## Menu
 - [ ] Quick row: Back, Forward, Bookmark (star toggles), Refresh, Settings.
-- [ ] New Tab, Downloads, History, Find in Page, Clear Browsing Data work.
+- [ ] New Tab, Return to SDM (near the top), History, Find in Page, Clear Browsing Data work.
+- [ ] The Home icon next to the menu opens the browser start page.
 - [ ] Block Ads / Capture Audio-Video / Desktop Mode show a check when ON and
       are still ON after restarting the app.
 - [ ] Desktop Mode reloads the page as a desktop site.
 - [ ] Tapping outside the menu closes it.
 - [ ] View Page Resources lists requests for the current page.
-- [ ] Return to SDM goes back to the download list.
 
 ## Downloads from the browser
 - [ ] Tap a direct file link (e.g. a .zip / .pdf): SDM popup appears with the
@@ -41,10 +40,11 @@ this list on a real phone and report anything that fails.
 - [ ] http:// site shows an open-lock icon, https:// shows a closed lock.
 
 ## Top bar, Share app, About
-- [ ] The browser icon and the three-dot menu are always shown (also when Downloads was opened from the browser).
+- [ ] The browser icon and the three-dot menu are always shown.
 - [ ] Menu -> Share app opens the Android share sheet; the receiver gets DROM.apk.
 - [ ] Menu -> About shows the logo, the version and a "Check for update" button.
-- [ ] After a new build is released, the three-dot icon shows a dot and About shows "New version available"; "Download update" adds the APK to Downloads and it installs over the old one.
+- [ ] After a new build is released, "Check for update" in About shows the update and its download starts by itself with live MB / % / speed; when done, the home page shows "Update ready" with Install, and it installs over the old one.
+- [ ] With no new build, "Check for update" says there is no new update.
 
 ## Notifications and background
 - [ ] Start a big download: the notification bar shows the file name, "NN% - X MB / Y MB - speed" and a progress bar.

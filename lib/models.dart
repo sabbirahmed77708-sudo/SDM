@@ -14,6 +14,10 @@ class DownloadItem {
   DlStatus status;
   String? error;
 
+  /// The server's ETag / Last-Modified when the file was first checked: used
+  /// to notice that the file changed before a paused download is resumed.
+  String? validator;
+
   // runtime only (not persisted)
   double speed = 0; // bytes/sec
 
@@ -30,6 +34,7 @@ class DownloadItem {
     this.headers = const {},
     this.status = DlStatus.queued,
     this.error,
+    this.validator,
   });
 
   String get savePath => '$dirPath/$fileName';
@@ -50,6 +55,7 @@ class DownloadItem {
         'headers': headers,
         'status': status.name,
         'error': error,
+        'validator': validator,
       };
 
   factory DownloadItem.fromJson(Map<String, dynamic> j) {
@@ -75,6 +81,7 @@ class DownloadItem {
           .map((k, v) => MapEntry(k.toString(), v.toString())),
       status: st,
       error: j['error'] as String?,
+      validator: j['validator'] as String?,
     );
   }
 }

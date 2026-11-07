@@ -39,8 +39,9 @@ class ProbeResult {
   final String? fileName;
   final String? contentType;
   final bool hls;
+  final String? validator; // ETag or Last-Modified of the file
   const ProbeResult(this.total, this.range, this.fileName, this.contentType,
-      {this.hls = false});
+      {this.hls = false, this.validator});
 }
 
 bool _looksHls(String url, String? ct) {
@@ -493,6 +494,7 @@ class DownloadManager extends ChangeNotifier {
       rangeSupported: info.range,
       hls: info.hls,
       headers: hdrs,
+      validator: info.validator,
     );
     items.insert(0, item);
     await _save();
@@ -720,6 +722,22 @@ class DownloadManager extends ChangeNotifier {
         final p = await inspect(item.url, headers: item.headers);
         item.total = p.total;
         item.rangeSupported = p.range;
+      }
+
+      // A paused download is only resumed if the file on the server is still
+      // the same one; otherwise the old pieces would be glued to new data and
+      // give a broken file. Changed file: start again from zero.
+      if (!item.hls && item.validator != null && item.downloaded > 0) {
+        try {
+          final p = await inspect(item.url, headers: item.headers);
+          if (p.validator != null && p.validator != item.validator) {
+            await _deleteParts(item);
+            item.downloaded = 0;
+            item.total = p.total;
+            item.rangeSupported = p.range;
+            item.validator = p.validator;
+          }
+        } catch (_) {} // no answer now: the normal retry logic handles it
       }
 
       run.ticker = _startTicker(item, run);
@@ -1189,7 +1207,9 @@ class DownloadManager extends ChangeNotifier {
         return const ProbeResult(-1, true, null, 'application/vnd.apple.mpegurl',
             hls: true);
       }
-      return ProbeResult(total, range && total > 0, name, type);
+      final validator = h.value('etag') ?? h.value('last-modified');
+      return ProbeResult(total, range && total > 0, name, type,
+          validator: validator);
     } on DioException catch (e) {
       throw _dioMessage(e);
     }
