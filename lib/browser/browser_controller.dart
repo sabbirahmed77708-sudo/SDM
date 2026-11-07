@@ -54,11 +54,19 @@ const List<String> _adPatterns = [
   r'.*/ads/.*\.js.*',
 ];
 
+/// Shortcuts that older versions added by themselves: removed from the start
+/// page (only Google stays). Shortcuts the person added are never touched.
+const _retiredShortcutUrls = {
+  'https://www.wikipedia.org',
+  'https://github.com',
+  'https://www.reddit.com',
+};
+
+List<Shortcut> _withoutRetired(List<Shortcut> l) =>
+    l.where((s) => !_retiredShortcutUrls.contains(s.url)).toList();
+
 const List<Shortcut> _defaultShortcuts = [
   Shortcut('Google', 'https://www.google.com'),
-  Shortcut('Wikipedia', 'https://www.wikipedia.org'),
-  Shortcut('GitHub', 'https://github.com'),
-  Shortcut('Reddit', 'https://www.reddit.com'),
 ];
 
 /// Central state of the browser: tabs, settings, bookmarks and history.
@@ -97,7 +105,7 @@ class BrowserController extends ChangeNotifier {
     final p = _prefs;
     if (p != null) {
       shortcuts = p.containsKey('b_shortcuts')
-          ? _readList(p, 'b_shortcuts', Shortcut.fromJson)
+          ? _withoutRetired(_readList(p, 'b_shortcuts', Shortcut.fromJson))
           : [..._defaultShortcuts];
     }
     await Future.delayed(const Duration(milliseconds: 400));
@@ -117,7 +125,7 @@ class BrowserController extends ChangeNotifier {
       orElse: () => ThemeMode.system,
     );
 
-    shortcuts = _readList(p, 'b_shortcuts', Shortcut.fromJson);
+    shortcuts = _withoutRetired(_readList(p, 'b_shortcuts', Shortcut.fromJson));
     if (!p.containsKey('b_shortcuts')) shortcuts = [..._defaultShortcuts];
     bookmarks = _readList(p, 'b_bookmarks', Shortcut.fromJson);
     history = _readList(p, 'b_history', HistoryEntry.fromJson);

@@ -213,13 +213,17 @@ class _BrowserScreenState extends State<BrowserScreen> {
         leading: Center(child: _tabCounter(cs)),
         title: _urlBar(t, cs),
         actions: [
+          // the SDM logo: back to the download manager (SDM home)
           IconButton(
-            tooltip: tr('Home'),
-            icon: const Icon(Icons.home_rounded),
+            tooltip: tr('Return to SDM'),
+            icon: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.asset('assets/icon/logo.png',
+                  width: 28, height: 28, filterQuality: FilterQuality.high),
+            ),
             onPressed: () {
               FocusScope.of(context).unfocus();
-              if (_editing) setState(() => _editing = false);
-              browser.goHome();
+              Navigator.pop(context);
             },
           ),
           IconButton(

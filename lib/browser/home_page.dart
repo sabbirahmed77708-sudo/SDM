@@ -201,14 +201,12 @@ class _HomePageState extends State<HomePage> {
               height: 56,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.16),
+                // white tile so every site logo is clearly visible
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: const Color(0xFFE1E6EF)),
               ),
-              child: Text(letter,
-                  style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
-                      color: color.shade700)),
+              child: _logo(s, letter, color),
             ),
             const SizedBox(height: 6),
             Text(s.name,
@@ -217,6 +215,28 @@ class _HomePageState extends State<HomePage> {
                 style: const TextStyle(fontSize: 12)),
           ],
         ),
+      ),
+    );
+  }
+
+  /// The site's own logo; the first letter shows while it loads or if it fails.
+  Widget _logo(Shortcut s, String letter, MaterialColor color) {
+    final host = Uri.tryParse(s.url.contains('://') ? s.url : 'https://${s.url}')
+            ?.host ??
+        '';
+    final fallback = Text(letter,
+        style: TextStyle(
+            fontSize: 24, fontWeight: FontWeight.w700, color: color.shade700));
+    if (host.isEmpty) return fallback;
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Image.network(
+        'https://www.google.com/s2/favicons?domain=$host&sz=128',
+        fit: BoxFit.contain,
+        filterQuality: FilterQuality.high,
+        errorBuilder: (_, __, ___) => Center(child: fallback),
+        loadingBuilder: (_, child, p) =>
+            p == null ? child : Center(child: fallback),
       ),
     );
   }

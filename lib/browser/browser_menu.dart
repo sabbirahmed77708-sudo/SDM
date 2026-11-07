@@ -167,7 +167,6 @@ class _MenuBody extends StatelessWidget {
               ),
               const Divider(height: 1),
               item(Icons.add_box_outlined, 'New Tab', () => browser.newTab()),
-              item(Icons.bolt_rounded, 'Return to SDM', actions.onReturn),
               item(Icons.shield_outlined, 'Block Ads',
                   () => browser.setBlockAds(!browser.blockAds),
                   checked: browser.blockAds, keepOpen: true),
