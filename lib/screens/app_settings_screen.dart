@@ -22,7 +22,7 @@ class AppSettingsScreen extends StatelessWidget {
       appBar: AppBar(title: const T('Settings')),
       body: ListenableBuilder(
         listenable: Listenable.merge([dm, browser, L10n.instance]),
-        builder: (context, _) => PullRefresh(child: PullRefresh(child: ListView(physics: kPullPhysics, physics: kPullPhysics, 
+        builder: (context, _) => PullRefresh(child: ListView(physics: kPullPhysics, 
           children: [
             SwitchListTile(
               secondary: const Icon(Icons.wifi_rounded),
@@ -108,7 +108,7 @@ class AppSettingsScreen extends StatelessWidget {
               onTap: () => showAboutDrom(context),
             ),
           ],
-        ))),
+        )),
       ),
     );
   }
