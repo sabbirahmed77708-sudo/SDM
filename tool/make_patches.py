@@ -107,7 +107,7 @@ def main():
     for n, old in enumerate(previous_builds(build)):
         old_apk = f"/tmp/DROM-old-{old}.apk"
         try:
-            sh("gh", "release", "download", f"build-{old}", "-p", "DROM.apk",
+            sh("gh", "release", "download", f"build-{old}", "-p", "*.apk",  # DROM.apk on old releases, SDM.apk on new ones
                "-O", old_apk, "--clobber")
             raw = bsdiff4.diff(open(old_apk, "rb").read(),
                                open(new_apk, "rb").read())

@@ -22,7 +22,7 @@
 
 1. এই প্রজেক্টের সব ফাইল GitHub রিপোজিটরিতে আপলোড করুন (`.github` ফোল্ডারসহ)।
 2. রিপোজিটরির **Actions** ট্যাবে "Build APK" নিজে থেকে চলবে (না চললে **Run workflow** চাপুন)।
-3. ৫-১০ মিনিট পর **Releases** পেজে নতুন build (`DROM.apk`) পাবেন। Actions run-এর Artifacts থেকেও নামানো যায়।
+3. ৫-১০ মিনিট পর **Releases** পেজে নতুন build (`SDM.apk`) পাবেন। Actions run-এর Artifacts থেকেও নামানো যায়।
 4. APK ফোনে ইনস্টল করুন (Unknown sources অনুমতি দিতে হবে)।
 
 প্রতিটি push-এ একটি করে নতুন Release হয়। অ্যাপের **About → Check for update** সেই Release দেখে নতুন ভার্সন আছে কিনা জানায়, আর সেখান থেকেই ডাউনলোড করা যায়।

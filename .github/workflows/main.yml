@@ -129,7 +129,7 @@ jobs:
           unzip -l build/app/outputs/flutter-apk/app-release.apk | sort -rn | head -12
 
       - name: Name the APK
-        run: cp build/app/outputs/flutter-apk/app-release.apk DROM.apk
+        run: cp build/app/outputs/flutter-apk/app-release.apk SDM.apk
 
       # Stop the release if the APK is not signed with the fixed key: such a
       # build could not be installed over the previous one.
@@ -137,7 +137,7 @@ jobs:
         run: |
           APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
           WANT=$(keytool -list -v -keystore "$SDM_KEYSTORE" -storepass "$SDM_STORE_PASS" 2>/dev/null | grep 'SHA256:' | head -1 | sed 's/.*SHA256: *//' | tr -d ':' | tr 'A-F' 'a-f')
-          GOT=$("$APKSIGNER" verify --print-certs DROM.apk | grep 'certificate SHA-256 digest' | head -1 | sed 's/.*: *//' | tr 'A-F' 'a-f')
+          GOT=$("$APKSIGNER" verify --print-certs SDM.apk | grep 'certificate SHA-256 digest' | head -1 | sed 's/.*: *//' | tr 'A-F' 'a-f')
           echo "keystore: $WANT"
           echo "apk:      $GOT"
           test -n "$WANT" && test "$WANT" = "$GOT"
@@ -150,12 +150,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           pip install bsdiff4
-          python3 tool/make_patches.py DROM.apk ${{ github.run_number }} patches
+          python3 tool/make_patches.py SDM.apk ${{ github.run_number }} patches
 
       - uses: actions/upload-artifact@v4
         with:
-          name: DROM-apk
-          path: DROM.apk
+          name: SDM-apk
+          path: SDM.apk
 
       - name: Publish release
         env:
@@ -165,7 +165,7 @@ jobs:
           git log -1 --pretty=%B | grep -v -E '^(Co-Authored-By|Claude-Session):' > notes.txt
           EXTRA=""
           if [ -f patches/DROM.sha256 ]; then EXTRA="$(ls patches/*)"; fi
-          gh release create "build-${{ github.run_number }}" DROM.apk $EXTRA \
+          gh release create "build-${{ github.run_number }}" SDM.apk $EXTRA \
             --title "SDM ${{ steps.ver.outputs.version }} (build ${{ github.run_number }})" \
             --notes-file notes.txt \
             --latest
