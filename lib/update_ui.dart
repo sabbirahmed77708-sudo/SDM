@@ -38,7 +38,10 @@ class UpdateActionButton extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(6),
               child: LinearProgressIndicator(
-                value: up.totalBytes > 0 ? up.progress : null,
+                // moving stripe until the first bytes arrive
+                value: (up.totalBytes > 0 && up.received > 0)
+                    ? up.progress
+                    : null,
                 minHeight: 7,
               ),
             ),
@@ -66,7 +69,9 @@ class UpdateActionButton extends StatelessWidget {
             Row(children: [
               Expanded(
                 child: Text(
-                  up.speed > 0
+                  up.received == 0
+                      ? tr('Connecting…')
+                      : up.speed > 0
                       ? '${tr(up.usingPatch ? 'Downloading update (changed part only)' : 'Downloading update')} · ${formatBytes(up.speed)}/s · ${_left(up.etaSeconds)} ${tr('left')}'
                       : tr(up.usingPatch
                           ? 'Downloading update (changed part only)'
@@ -154,7 +159,8 @@ String formatReleaseDate(DateTime? d) {
   return '${d.day} $m ${d.year} · $h12:$mm ${d.hour >= 12 ? 'PM' : 'AM'}';
 }
 
-/// Banner on the home screen while a new version is available.
+/// Banner on the home screen once the new version is downloaded and only the
+/// install tap is left. While it downloads, the progress is only in About.
 class UpdateBanner extends StatelessWidget {
   const UpdateBanner({super.key});
 
@@ -162,24 +168,24 @@ class UpdateBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final up = UpdateChecker.instance;
     final info = up.available;
-    if (info == null) return const SizedBox.shrink();
+    if (info == null || !up.showReadyBanner) return const SizedBox.shrink();
     final cs = Theme.of(context).colorScheme;
     return Card(
       color: cs.primaryContainer,
       margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.fromLTRB(14, 10, 6, 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(children: [
-              Icon(Icons.system_update_rounded, color: cs.onPrimaryContainer),
+              Icon(Icons.check_circle_rounded, color: cs.onPrimaryContainer),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    T('New version available',
+                    T('Update ready',
                         style: TextStyle(
                             fontWeight: FontWeight.w700,
                             color: cs.onPrimaryContainer)),
@@ -192,9 +198,21 @@ class UpdateBanner extends StatelessWidget {
                   ],
                 ),
               ),
+              IconButton(
+                tooltip: tr('Later'),
+                icon: Icon(Icons.close_rounded,
+                    size: 20, color: cs.onPrimaryContainer),
+                onPressed: up.closeReadyBanner,
+              ),
             ]),
-            const SizedBox(height: 10),
-            const UpdateActionButton(),
+            Padding(
+              padding: const EdgeInsets.only(right: 8, top: 6),
+              child: FilledButton.icon(
+                onPressed: up.install,
+                icon: const Icon(Icons.install_mobile_rounded),
+                label: const T('Install update'),
+              ),
+            ),
           ],
         ),
       ),

@@ -19,7 +19,26 @@ class _AboutScreenState extends State<AboutScreen> {
   void initState() {
     super.initState();
     up.loadVersion();
-    if (!up.checkedOnce) up.check();
+    // silent: opening the page must not start a download on mobile data
+    if (!up.checkedOnce) up.check(silent: true);
+  }
+
+  /// "Check for update": says clearly what it found, including "no update".
+  Future<void> _manualCheck() async {
+    await up.check();
+    if (!mounted) return;
+    final msg = up.error != null
+        ? up.error!
+        : (up.available == null
+            ? 'No new update right now. You have the latest version.'
+            : null);
+    if (msg == null) return; // update found: the card above shows it
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        behavior: SnackBarBehavior.floating,
+        content: Text(tr(msg)),
+      ));
   }
 
   @override
@@ -141,7 +160,7 @@ class _AboutScreenState extends State<AboutScreen> {
                 up.phase != UpdatePhase.patching) ...[
               const SizedBox(height: 12),
               OutlinedButton.icon(
-                onPressed: () => up.check(),
+                onPressed: _manualCheck,
                 icon: const Icon(Icons.refresh_rounded),
                 label: const T('Check for update'),
               ),

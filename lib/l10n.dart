@@ -213,6 +213,8 @@ const Map<String, String> _bn = {
   'Get SDM - a fast download manager with a built-in browser.':
       'SDM নিন - বিল্ট-ইন ব্রাউজারসহ দ্রুত ডাউনলোড ম্যানেজার।',
   'Check for update': 'আপডেট চেক করুন',
+  'Connecting…': 'সংযোগ হচ্ছে…',
+  'No new update right now. You have the latest version.': 'এখন কোনো নতুন আপডেট নেই। আপনার কাছে সর্বশেষ ভার্সনই আছে।',
   'Checking for updates…': 'আপডেট চেক করা হচ্ছে…',
   'You are up to date': 'আপনার অ্যাপ সর্বশেষ ভার্সনে আছে',
   'New version available': 'নতুন আপডেট এসেছে',

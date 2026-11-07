@@ -84,6 +84,19 @@ class UpdateChecker extends ChangeNotifier {
   /// Build number the "update available" pop-up was already shown for.
   int promptedBuild = 0;
 
+  /// The "update ready" banner on the home screen was closed for this build.
+  int bannerClosedBuild = 0;
+  void closeReadyBanner() {
+    bannerClosedBuild = _readyBuild;
+    notifyListeners();
+  }
+
+  /// Home screen banner: only when the download is finished and waiting.
+  bool get showReadyBanner =>
+      phase == UpdatePhase.ready &&
+      available != null &&
+      bannerClosedBuild != _readyBuild;
+
   // ---- automatic update (like the Play Store / Messenger)
   /// When ON, a new version is downloaded by itself in the background
   /// (on Wi-Fi only) and only the final "Install" tap is left.
@@ -121,14 +134,16 @@ class UpdateChecker extends ChangeNotifier {
   }
 
   /// Starts the background download by itself when allowed.
-  Future<void> _maybeAutoDownload() async {
+  /// [manual]: the person tapped "Check for update", so it starts at once on
+  /// any network; the by-itself background check waits for Wi-Fi.
+  Future<void> _maybeAutoDownload({bool manual = false}) async {
     final info = available;
     if (!autoUpdate || info == null) return;
     if (phase != UpdatePhase.idle || _autoStarting) return;
     _autoStarting = true;
     try {
       // mobile data is not used for a big update without asking
-      if (!await DownloadManager.instance.onWifi()) return;
+      if (!manual && !await DownloadManager.instance.onWifi()) return;
       await startUpdate(auto: true);
     } finally {
       _autoStarting = false;
@@ -266,7 +281,8 @@ class UpdateChecker extends ChangeNotifier {
         if (t > 0) totalBytes = t;
         final now = DateTime.now();
         final ms = now.difference(tick).inMilliseconds;
-        if (ms > 250) {
+        // update the screen about 8 times a second, and at the very end
+        if (ms > 120 || (t > 0 && r >= t)) {
           final inst = (r - lastBytes) * 1000 / ms;
           speed = speed == 0 ? inst : speed * 0.7 + inst * 0.3;
           lastBytes = r;
@@ -503,7 +519,7 @@ class UpdateChecker extends ChangeNotifier {
       checking = false;
       notifyListeners();
       // new version found: fetch it quietly in the background
-      if (available != null) _maybeAutoDownload();
+      if (available != null) _maybeAutoDownload(manual: !silent);
     }
   }
 }
