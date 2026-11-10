@@ -140,7 +140,7 @@ class _FolderPickerState extends State<_FolderPicker> {
     final clean = (name ?? '')
         .replaceAll(RegExp(r'[\\/:*?"<>|\x00-\x1f]'), '_')
         .trim();
-    if (clean.isEmpty) return;
+    if (clean.isEmpty || RegExp(r'^\.+$').hasMatch(clean)) return;
     try {
       final d = Directory('$_cwd/$clean');
       await d.create(recursive: true);
