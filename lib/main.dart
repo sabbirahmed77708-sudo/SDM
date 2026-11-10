@@ -25,7 +25,7 @@ Future<void> main() async {
   await _safely(L10n.instance.init);
   await _safely(BrowserController.instance.init);
   await _safely(NotifySettings.instance.init);
-  DownloadNotifier.instance.start();
+  await _safely(() async => DownloadNotifier.instance.start());
   runApp(const SdmApp());
   LinkIntake.instance.start();
   // quiet check; a new version shows up in the menu and in About

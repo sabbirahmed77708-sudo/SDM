@@ -73,12 +73,29 @@ class LinkIntake with WidgetsBindingObserver {
     }
   }
 
+  /// Drops punctuation that belongs to the sentence around a link, not to the
+  /// link ("get it at https://x.com/a.zip." must not end in "a.zip.").
+  static String _trimLinkEnd(String u) {
+    var s = u;
+    while (s.isNotEmpty) {
+      final c = s[s.length - 1];
+      final strayClose = (c == ')' && !s.contains('(')) ||
+          (c == ']' && !s.contains('['));
+      if ('.,;:!?\''.contains(c) || strayClose) {
+        s = s.substring(0, s.length - 1);
+      } else {
+        break;
+      }
+    }
+    return s;
+  }
+
   static String? extractUrl(String text) {
     final m = RegExp(r'https?://[^\s<>"]+').firstMatch(text);
-    if (m != null) return m.group(0);
+    if (m != null) return _trimLinkEnd(m.group(0)!);
     // "www.example.com/page" without the https://
     final w = RegExp(r'\bwww\.[^\s<>"]+').firstMatch(text);
-    return w == null ? null : 'https://${w.group(0)}';
+    return w == null ? null : 'https://${_trimLinkEnd(w.group(0)!)}';
   }
 
   static bool looksLikeFile(String url) {

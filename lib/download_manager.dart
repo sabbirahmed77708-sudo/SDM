@@ -299,12 +299,51 @@ class DownloadManager extends ChangeNotifier {
 
   /// Starts waiting downloads while there is room.
   void _pump() {
+    if (wifiOnly) {
+      // a waiting download must not slip onto mobile data
+      _pumpOnWifi();
+      return;
+    }
     while (_runs.length < maxActive) {
       final next = items
           .where((e) => e.status == DlStatus.queued && !_runs.containsKey(e.id))
           .firstOrNull;
       if (next == null) return;
       _begin(next);
+    }
+  }
+
+  bool _pumpingWifi = false;
+
+  /// [_pump] for "Wi-Fi only": queued downloads start only while on Wi-Fi,
+  /// otherwise they wait for it.
+  Future<void> _pumpOnWifi() async {
+    if (_pumpingWifi) return;
+    _pumpingWifi = true;
+    try {
+      final wifi = await _onWifi();
+      var changed = false;
+      while (_runs.length < maxActive) {
+        final next = items
+            .where(
+                (e) => e.status == DlStatus.queued && !_runs.containsKey(e.id))
+            .firstOrNull;
+        if (next == null) break;
+        changed = true;
+        if (wifi || !wifiOnly) {
+          _begin(next);
+        } else {
+          next.status = DlStatus.paused;
+          next.speed = 0;
+          _waitingForWifi.add(next.id);
+        }
+      }
+      if (changed) {
+        notifyListeners();
+        await _save();
+      }
+    } finally {
+      _pumpingWifi = false;
     }
   }
 
@@ -431,9 +470,12 @@ class DownloadManager extends ChangeNotifier {
     final raw = _prefs!.getString('items');
     if (raw != null) {
       try {
-        final list = jsonDecode(raw) as List;
-        items.addAll(
-            list.map((e) => DownloadItem.fromJson(e as Map<String, dynamic>)));
+        // one damaged entry must not make the whole list disappear
+        for (final e in jsonDecode(raw) as List) {
+          try {
+            items.add(DownloadItem.fromJson(e as Map<String, dynamic>));
+          } catch (_) {}
+        }
       } catch (_) {}
     }
     notifyListeners();
@@ -692,6 +734,8 @@ class DownloadManager extends ChangeNotifier {
   }
 
   void pause(DownloadItem item) {
+    // a "start again when the old run stops" request is void once paused
+    _startAfterStop.remove(item.id);
     _waitingForNet.remove(item.id);
     _waitingForWifi.remove(item.id);
     final run = _runs[item.id];

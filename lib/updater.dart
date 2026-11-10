@@ -282,7 +282,7 @@ class UpdateChecker extends ChangeNotifier {
         final now = DateTime.now();
         final ms = now.difference(tick).inMilliseconds;
         // update the screen about 8 times a second, and at the very end
-        if (ms > 120 || (t > 0 && r >= t)) {
+        if (ms > 0 && (ms > 120 || (t > 0 && r >= t))) {
           final inst = (r - lastBytes) * 1000 / ms;
           speed = speed == 0 ? inst : speed * 0.7 + inst * 0.3;
           lastBytes = r;

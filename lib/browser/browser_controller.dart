@@ -291,7 +291,12 @@ class BrowserController extends ChangeNotifier {
     final looksLikeHost = !t.contains(' ') &&
         (t.contains('.') || lower.startsWith('localhost')) &&
         !t.endsWith('.');
-    if (looksLikeHost) return 'https://$t';
+    if (looksLikeHost) {
+      // local servers and IP addresses (router pages) are plain http
+      final host = t.split(RegExp(r'[/:?#]')).first;
+      final isIp = RegExp(r'^\d{1,3}(\.\d{1,3}){3}$').hasMatch(host);
+      return (isIp || lower.startsWith('localhost')) ? 'http://$t' : 'https://$t';
+    }
     return 'https://www.google.com/search?q=${Uri.encodeQueryComponent(t)}';
   }
 
