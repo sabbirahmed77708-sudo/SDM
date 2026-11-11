@@ -54,7 +54,8 @@ class _AboutScreenState extends State<AboutScreen> {
           // only the version; the build number stays inside the app
           final ver =
               up.version.isEmpty ? '' : '${tr('Version')} ${up.version}';
-          return PullRefresh(onRefresh: _manualCheck, child: ListView(physics: kPullPhysics, 
+          return Stack(children: [
+            PullRefresh(onRefresh: _manualCheck, child: ListView(physics: kPullPhysics, 
             padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
             children: [
               Center(
@@ -93,53 +94,43 @@ class _AboutScreenState extends State<AboutScreen> {
               ),
               const SizedBox(height: 26),
               _updateCard(cs),
-              const SizedBox(height: 16),
-              _websiteCard(cs),
             ],
-          ));
+          )),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: SafeArea(child: _websiteLink(cs)),
+            ),
+          ]);
         },
       ),
     );
   }
 
-  /// Big tappable card: opens the SDM website in the built-in browser.
-  Widget _websiteCard(ColorScheme cs) {
+  /// Plain link, centred at the bottom: opens the website in the SDM browser.
+  Widget _websiteLink(ColorScheme cs) {
     const url = 'https://sdmapk.pages.dev/';
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => LinkIntake.instance.handleText(url),
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Row(children: [
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: cs.primary.withOpacity(0.14),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(Icons.language_rounded, color: cs.primary, size: 30),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const T('Our website',
-                      style:
-                          TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
-                  const SizedBox(height: 3),
-                  Text('sdmapk.pages.dev',
-                      style: TextStyle(
-                          color: cs.primary,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600)),
-                ],
-              ),
-            ),
-            Icon(Icons.open_in_new_rounded, color: cs.onSurfaceVariant),
-          ]),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Center(
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: () => LinkIntake.instance.handleText(url),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.language_rounded, size: 18, color: cs.primary),
+              const SizedBox(width: 8),
+              Text('sdmapk.pages.dev',
+                  style: TextStyle(
+                      color: cs.primary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      decoration: TextDecoration.underline,
+                      decorationColor: cs.primary)),
+            ]),
+          ),
         ),
       ),
     );
