@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'browser/browser_controller.dart';
 import 'browser/browser_screen.dart';
@@ -27,7 +28,9 @@ class LinkIntake with WidgetsBindingObserver {
     'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'epub',
   };
 
+  static const _prefKey = 'last_clipboard_offer';
   String? _lastClipboard;
+  bool _loadedLast = false;
   bool _busy = false;
 
   void start() {
@@ -147,12 +150,21 @@ class LinkIntake with WidgetsBindingObserver {
   /// A copied link: only offered when it clearly points at a file.
   Future<void> _checkClipboard() async {
     try {
+      if (!_loadedLast) {
+        // remembered across app restarts, so the same copied link is not
+        // offered again every time the app opens
+        _loadedLast = true;
+        final p = await SharedPreferences.getInstance();
+        _lastClipboard ??= p.getString(_prefKey);
+      }
       final data = await Clipboard.getData('text/plain');
       final text = data?.text?.trim();
       if (text == null || text.isEmpty || text == _lastClipboard) return;
       final url = extractUrl(text);
       if (url == null || !looksLikeFile(url) || isUnsupportedHost(url)) return;
       _lastClipboard = text;
+      final p = await SharedPreferences.getInstance();
+      await p.setString(_prefKey, text);
       await _offer(url);
     } catch (_) {}
   }
