@@ -2,6 +2,7 @@ import '../pull_refresh.dart';
 import 'package:flutter/material.dart';
 
 import '../l10n.dart';
+import '../link_intake.dart';
 import '../update_ui.dart';
 import '../updater.dart';
 
@@ -92,9 +93,54 @@ class _AboutScreenState extends State<AboutScreen> {
               ),
               const SizedBox(height: 26),
               _updateCard(cs),
+              const SizedBox(height: 16),
+              _websiteCard(cs),
             ],
           ));
         },
+      ),
+    );
+  }
+
+  /// Big tappable card: opens the SDM website in the built-in browser.
+  Widget _websiteCard(ColorScheme cs) {
+    const url = 'https://sdmapk.pages.dev/';
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => LinkIntake.instance.handleText(url),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Row(children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: cs.primary.withOpacity(0.14),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(Icons.language_rounded, color: cs.primary, size: 30),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const T('Our website',
+                      style:
+                          TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
+                  const SizedBox(height: 3),
+                  Text('sdmapk.pages.dev',
+                      style: TextStyle(
+                          color: cs.primary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+            Icon(Icons.open_in_new_rounded, color: cs.onSurfaceVariant),
+          ]),
+        ),
       ),
     );
   }
