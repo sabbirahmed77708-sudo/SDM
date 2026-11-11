@@ -74,9 +74,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _showAddSheet() async {
     final ctrl = TextEditingController();
-    final clip = await Clipboard.getData('text/plain');
-    final t = clip?.text?.trim() ?? '';
-    if (t.startsWith('http://') || t.startsWith('https://')) ctrl.text = t;
+    // starts empty: the person pastes the link themselves (paste button)
     if (!mounted) return;
 
     final url = await showModalBottomSheet<String>(
