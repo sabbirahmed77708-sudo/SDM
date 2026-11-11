@@ -434,6 +434,75 @@ class UpdateChecker extends ChangeNotifier {
     } catch (_) {}
   }
 
+  /// Fallback that needs no API: /releases/latest redirects to the newest tag,
+  /// and the files of a release have fixed download addresses.
+  Future<Map<String, dynamic>?> _latestViaWeb() async {
+    try {
+      final d = Dio(BaseOptions(
+        connectTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 15),
+        followRedirects: false,
+        headers: {'User-Agent': 'SDM-app'},
+        validateStatus: (s) => s != null && s < 400,
+      ));
+      final r = await d.get<dynamic>('https://github.com/$kRepo/releases/latest');
+      final loc = r.headers.value('location') ?? '';
+      final m = RegExp(r'/releases/tag/([^/?#]+)').firstMatch(loc);
+      if (m == null) return null;
+      final tag = Uri.decodeComponent(m.group(1)!);
+      final base = 'https://github.com/$kRepo/releases/download/$tag';
+      final h = Dio(BaseOptions(
+        connectTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 15),
+        headers: {'User-Agent': 'SDM-app'},
+        validateStatus: (s) => s != null && s < 400,
+      ));
+      Future<int?> sizeOf(String url) async {
+        try {
+          // asked for one byte only: the answer says how big the file is
+          final x = await h.get<dynamic>(url,
+              options: Options(
+                  headers: {'Range': 'bytes=0-0'},
+                  responseType: ResponseType.bytes));
+          final cr = x.headers.value('content-range') ?? '';
+          return int.tryParse(cr.split('/').last) ?? 0;
+        } catch (_) {
+          return null; // not there
+        }
+      }
+
+      final apkSize = await sizeOf('$base/SDM.apk');
+      if (apkSize == null) return null;
+      final patchFile = 'DROM-patch-from-$build.bin';
+      final patchSize = build > 0 ? await sizeOf('$base/$patchFile') : null;
+      return {
+        'tag_name': tag,
+        'name': tag,
+        'body': '',
+        'assets': [
+          {
+            'name': 'SDM.apk',
+            'browser_download_url': '$base/SDM.apk',
+            'size': apkSize
+          },
+          if (patchSize != null)
+            {
+              'name': patchFile,
+              'browser_download_url': '$base/$patchFile',
+              'size': patchSize
+            },
+          {
+            'name': 'DROM.sha256',
+            'browser_download_url': '$base/DROM.sha256',
+            'size': 0
+          },
+        ],
+      };
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> check({bool silent = false}) async {
     if (checking) return;
     checking = true;
@@ -451,16 +520,24 @@ class UpdateChecker extends ChangeNotifier {
         },
         validateStatus: (s) => s != null && (s < 400 || s == 404),
       ));
-      final r = await dio.get<dynamic>(
-          'https://api.github.com/repos/$kRepo/releases/latest');
-      if (r.statusCode == 404 || r.data is! Map) {
-        // no release published yet: nothing newer exists
-        available = null;
-        checkedOnce = true;
-        error = null;
-        return;
+      Map<String, dynamic>? data;
+      try {
+        final r = await dio.get<dynamic>(
+            'https://api.github.com/repos/$kRepo/releases/latest');
+        if (r.statusCode == 404) {
+          // no release published yet: nothing newer exists
+          available = null;
+          checkedOnce = true;
+          error = null;
+          return;
+        }
+        if (r.data is Map) data = Map<String, dynamic>.from(r.data as Map);
+      } catch (_) {
+        // GitHub's API is rate-limited per IP (shared mobile networks hit it
+        // easily) or blocked: use the plain website instead.
       }
-      final data = Map<String, dynamic>.from(r.data as Map);
+      data ??= await _latestViaWeb();
+      if (data == null) throw Exception('could not read the latest release');
       final tag = (data['tag_name'] ?? '').toString();
       final m = RegExp(r'(\d+)\s*$').firstMatch(tag);
       final remote = m != null ? int.parse(m.group(1)!) : 0;
