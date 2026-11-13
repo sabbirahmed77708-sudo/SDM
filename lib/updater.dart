@@ -315,17 +315,26 @@ class UpdateChecker extends ChangeNotifier {
     final oldApk =
         await const MethodChannel('drom/app').invokeMethod<String>('apkPath');
     if (oldApk == null || !File(oldApk).existsSync()) return false;
-    final got = await applyDromPatchInBackground(oldApk, patchPath, tmp);
+    // rebuilt into its own file: if it ever takes too long, the full APK is
+    // downloaded into [tmp] meanwhile without the two touching each other
+    final rebuilt = '$tmp.rebuild';
+    String? got;
+    try {
+      got = await applyDromPatchInBackground(oldApk, patchPath, rebuilt)
+          .timeout(const Duration(seconds: 120));
+    } catch (_) {
+      got = null;
+    }
     try {
       File(patchPath).deleteSync();
     } catch (_) {}
     if (got != sha) {
       try {
-        File(tmp).deleteSync();
+        File(rebuilt).deleteSync();
       } catch (_) {}
       return false;
     }
-    await File(tmp).rename(path);
+    await File(rebuilt).rename(path);
     return true;
   }
 
