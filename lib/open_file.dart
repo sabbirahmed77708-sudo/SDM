@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -29,6 +30,12 @@ Future<void> openDownloaded(String path) async {
     // type makes it offer the phone's video / music player. If that is
     // refused, ask again with "any type" so the "Open with" list appears.
     final mime = _mimeFor(path);
+    final n = await openNative(path, mime);
+    if (n == 'ok') return;
+    if (n == 'noApp') {
+      say('No app on this phone can open this file.');
+      return;
+    }
     var r = await OpenFilex.open(path, type: mime);
     if (r.type != ResultType.done &&
         r.type != ResultType.permissionDenied &&
@@ -50,6 +57,18 @@ Future<void> openDownloaded(String path) async {
     }
   } catch (_) {
     say('Could not open this file.');
+  }
+}
+
+/// Opens the file through SDM's own file provider. Returns "ok", "noApp",
+/// "needInstallPermission", "missing" or "error" (also when unavailable).
+Future<String> openNative(String path, String? mime) async {
+  try {
+    final r = await const MethodChannel('drom/app')
+        .invokeMethod<String>('openFile', {'path': path, 'mime': mime});
+    return r ?? 'error';
+  } catch (_) {
+    return 'error';
   }
 }
 

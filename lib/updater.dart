@@ -10,6 +10,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'download_manager.dart';
+import 'open_file.dart' show openNative;
 import 'patcher.dart';
 
 /// GitHub repository that publishes SDM builds as Releases.
@@ -377,9 +378,13 @@ class UpdateChecker extends ChangeNotifier {
         // opens "Install unknown apps" for SDM, once
         await Permission.requestInstallPackages.request();
       }
-      final r = await OpenFilex.open(path,
-          type: 'application/vnd.android.package-archive');
-      if (r.type != ResultType.done) {
+      const apkMime = 'application/vnd.android.package-archive';
+      final n = await openNative(path, apkMime);
+      if (n == 'ok') return;
+      final r = n == 'needInstallPermission'
+          ? null
+          : await OpenFilex.open(path, type: apkMime);
+      if (r == null || r.type != ResultType.done) {
         phase = UpdatePhase.error;
         updateError = 'Could not open the installer. Allow "Install unknown apps" for SDM.';
         notifyListeners();
