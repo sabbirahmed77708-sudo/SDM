@@ -58,10 +58,23 @@ Future<String> applyDromPatch(
   if (ctrl.length % 24 != 0) throw const PatchException('control damaged');
   final cb = ByteData.sublistView(ctrl);
 
-  final old = await File(oldPath).readAsBytes();
-  final raf = await File(outPath).open(mode: FileMode.write);
+  // Everything below is synchronous on purpose: this runs on its own isolate,
+  // and a real async file write for each of the (many thousands of) small
+  // pieces of a patch made the rebuild take minutes. Output goes through one
+  // big buffer instead.
+  final old = File(oldPath).readAsBytesSync();
+  final oldLen = old.length;
+  final raf = File(outPath).openSync(mode: FileMode.write);
   try {
-    final buf = Uint8List(1 << 20);
+    final buf = Uint8List(4 << 20);
+    var fill = 0;
+    void flushBuf() {
+      if (fill > 0) {
+        raf.writeFromSync(buf, 0, fill);
+        fill = 0;
+      }
+    }
+
     var oldPos = 0, newPos = 0, diffPos = 0, extraPos = 0, c = 0;
     while (newPos < newSize) {
       if (c + 24 > ctrl.length) throw const PatchException('patch too short');
@@ -79,31 +92,40 @@ Future<String> applyDromPatch(
       // 1) old bytes + diff bytes
       var done = 0;
       while (done < add) {
-        final n = math.min(buf.length, add - done);
+        final n = math.min(add - done, buf.length - fill);
         final d0 = diffPos + done;
         final o0 = oldPos + done;
         for (var i = 0; i < n; i++) {
           final o = o0 + i;
-          final ob = (o >= 0 && o < old.length) ? old[o] : 0;
-          buf[i] = (diff[d0 + i] + ob) & 0xFF;
+          final ob = (o >= 0 && o < oldLen) ? old[o] : 0;
+          buf[fill + i] = (diff[d0 + i] + ob) & 0xFF;
         }
-        await raf.writeFrom(buf, 0, n);
+        fill += n;
         done += n;
+        if (fill == buf.length) flushBuf();
       }
       newPos += add;
       oldPos += add;
       diffPos += add;
       // 2) bytes that only exist in the new file
-      if (copy > 0) {
-        await raf.writeFrom(extra, extraPos, extraPos + copy);
-        newPos += copy;
-        extraPos += copy;
+      var left = copy;
+      var from = extraPos;
+      while (left > 0) {
+        final n = math.min(left, buf.length - fill);
+        buf.setRange(fill, fill + n, extra, from);
+        fill += n;
+        from += n;
+        left -= n;
+        if (fill == buf.length) flushBuf();
       }
+      newPos += copy;
+      extraPos += copy;
       oldPos += seek;
     }
-    await raf.flush();
+    flushBuf();
+    raf.flushSync();
   } finally {
-    await raf.close();
+    raf.closeSync();
   }
 
   final out = File(outPath);
