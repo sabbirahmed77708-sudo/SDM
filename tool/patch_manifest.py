@@ -54,6 +54,13 @@ if "usesCleartextTraffic" not in xml:
 if "requestLegacyExternalStorage" not in xml:
     xml = xml.replace("<application", '<application android:requestLegacyExternalStorage="true"', 1)
 
+# Do not let Android restore old app data (download list, browser history)
+# from a Google backup when SDM is uninstalled and installed again.
+if "android:allowBackup" in xml:
+    xml = re.sub(r'android:allowBackup="[^"]*"', 'android:allowBackup="false"', xml, count=1)
+else:
+    xml = xml.replace("<application", '<application android:allowBackup="false"', 1)
+
 # app name
 xml = re.sub(r'android:label="[^"]*"', 'android:label="SDM"', xml, count=1)
 
