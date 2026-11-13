@@ -1,3 +1,7 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
 import '../screens/app_settings_screen.dart';
@@ -35,6 +39,17 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
   bool _promptOpen = false;
 
+  // address-bar suggestions (history, bookmarks and Google's suggestions)
+  List<_Sugg> _sugg = [];
+  Timer? _suggTimer;
+  int _suggSeq = 0;
+  final Dio _suggDio = Dio(BaseOptions(
+    connectTimeout: const Duration(seconds: 4),
+    receiveTimeout: const Duration(seconds: 4),
+    responseType: ResponseType.plain,
+    headers: {'User-Agent': 'SDM-app'},
+  ));
+
   @override
   void initState() {
     super.initState();
@@ -52,6 +67,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
     browser.screenOpen = false;
     DownloadManager.instance.setBrowserOpen(false);
     browser.detachAll(); // WebViews die with this screen
+    _suggTimer?.cancel();
     _urlCtrl.dispose();
     _urlFocus.dispose();
     _findCtrl.dispose();
@@ -87,9 +103,65 @@ class _BrowserScreenState extends State<BrowserScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _urlFocus.requestFocus();
     });
+    _onUrlChanged('');
+  }
+
+  /// Local matches at once, Google's suggestions a moment later.
+  void _onUrlChanged(String v) {
+    final q = v.trim();
+    final lower = q.toLowerCase();
+    final local = <_Sugg>[];
+    final seen = <String>{};
+    void add(_Sugg x) {
+      if (local.length < 5 && seen.add(x.text)) local.add(x);
+    }
+
+    if (q.isEmpty) {
+      for (final h in browser.history) {
+        add(_Sugg(h.url, _SuggKind.history, h.title));
+      }
+    } else {
+      for (final b in browser.bookmarks) {
+        if (b.name.toLowerCase().contains(lower) ||
+            b.url.toLowerCase().contains(lower)) {
+          add(_Sugg(b.url, _SuggKind.bookmark, b.name));
+        }
+      }
+      for (final h in browser.history) {
+        if (h.title.toLowerCase().contains(lower) ||
+            h.url.toLowerCase().contains(lower)) {
+          add(_Sugg(h.url, _SuggKind.history, h.title));
+        }
+      }
+    }
+    setState(() => _sugg = local);
+    _suggTimer?.cancel();
+    if (q.isEmpty || q.length > 80) return;
+    final seq = ++_suggSeq;
+    _suggTimer = Timer(const Duration(milliseconds: 250), () async {
+      try {
+        final r = await _suggDio.get<String>(
+            'https://suggestqueries.google.com/complete/search?client=firefox&q=${Uri.encodeQueryComponent(q)}');
+        final data = jsonDecode(r.data ?? '[]');
+        if (!mounted || seq != _suggSeq || !_editing) return;
+        final words = (data is List && data.length > 1 && data[1] is List)
+            ? [for (final w in data[1] as List) w.toString()]
+            : <String>[];
+        setState(() {
+          _sugg = [
+            ...local,
+            for (final w in words.take(6)) _Sugg(w, _SuggKind.search, ''),
+          ];
+        });
+      } catch (_) {
+        // offline or blocked: the local matches stay
+      }
+    });
   }
 
   void _submitUrl(String v) {
+    _suggTimer?.cancel();
+    _suggSeq++;
     setState(() => _editing = false);
     _urlFocus.unfocus();
     browser.navigate(v);
@@ -265,7 +337,8 @@ class _BrowserScreenState extends State<BrowserScreen> {
               if (_findVisible) _findBar(t, cs),
             ],
           ),
-          if (showMedia)
+          if (_editing) Positioned.fill(child: _suggestionPanel(cs)),
+          if (showMedia && !_editing)
             Positioned.fill(
               // keep clear of the find bar when it is open
               bottom: _findVisible ? 64 : 0,
@@ -278,6 +351,62 @@ class _BrowserScreenState extends State<BrowserScreen> {
             ),
         ],
       ),
+    );
+  }
+
+  Widget _suggestionPanel(ColorScheme cs) {
+    return Material(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: _sugg.isEmpty
+          ? const SizedBox.expand()
+          : ListView(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              children: [
+                for (final x in _sugg)
+                  ListTile(
+                    dense: true,
+                    leading: Icon(
+                      switch (x.kind) {
+                        _SuggKind.search => Icons.search_rounded,
+                        _SuggKind.history => Icons.history_rounded,
+                        _SuggKind.bookmark => Icons.star_rounded,
+                      },
+                      color: x.kind == _SuggKind.bookmark
+                          ? const Color(0xFFF59E0B)
+                          : cs.onSurfaceVariant,
+                    ),
+                    title: Text(
+                      x.kind == _SuggKind.search || x.title.isEmpty
+                          ? x.text
+                          : x.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: (x.kind == _SuggKind.search || x.title.isEmpty)
+                        ? null
+                        : Text(x.text,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: cs.outline, fontSize: 12)),
+                    trailing: x.kind == _SuggKind.search
+                        ? IconButton(
+                            tooltip: tr('Use'),
+                            icon: const Icon(Icons.north_west_rounded,
+                                size: 18),
+                            onPressed: () {
+                              _urlCtrl.value = TextEditingValue(
+                                text: x.text,
+                                selection: TextSelection.collapsed(
+                                    offset: x.text.length),
+                              );
+                              _onUrlChanged(x.text);
+                            },
+                          )
+                        : null,
+                    onTap: () => _submitUrl(x.text),
+                  ),
+              ],
+            ),
     );
   }
 
@@ -338,6 +467,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
                     keyboardType: TextInputType.url,
                     textInputAction: TextInputAction.go,
                     onSubmitted: _submitUrl,
+                    onChanged: _onUrlChanged,
                     style: const TextStyle(fontSize: 14.5),
                     decoration: InputDecoration(
                       isDense: true,
@@ -449,4 +579,13 @@ class _BrowserScreenState extends State<BrowserScreen> {
       ),
     );
   }
+}
+
+enum _SuggKind { search, history, bookmark }
+
+class _Sugg {
+  final String text; // what is opened / searched
+  final _SuggKind kind;
+  final String title; // page title (history, bookmarks)
+  const _Sugg(this.text, this.kind, this.title);
 }

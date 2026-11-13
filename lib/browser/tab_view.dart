@@ -8,6 +8,7 @@ import 'browser_controller.dart';
 import 'browser_tab.dart';
 import 'download_prompt.dart';
 import 'home_page.dart';
+import 'link_menu.dart';
 import '../l10n.dart';
 
 /// Renders one tab: its WebView (kept alive underneath), the homepage overlay
@@ -240,6 +241,26 @@ class _WebHostState extends State<_WebHost> {
         return true;
       },
       onCloseWindow: (c) => browser.closeTabById(tab.id),
+      onLongPressHitTestResult: (c, hit) {
+        final type = hit.type;
+        final extra = hit.extra ?? '';
+        final isImage = type == InAppWebViewHitTestResultType.IMAGE_TYPE;
+        final isLink = type == InAppWebViewHitTestResultType.SRC_ANCHOR_TYPE ||
+            type == InAppWebViewHitTestResultType.SRC_IMAGE_ANCHOR_TYPE;
+        if (!(isImage || isLink) || !mounted) return;
+        final lower = extra.toLowerCase();
+        if (!lower.startsWith('http://') && !lower.startsWith('https://')) {
+          return;
+        }
+        showLinkMenu(
+          context,
+          browser: browser,
+          url: extra,
+          isImage: isImage,
+          referer: tab.url,
+          onDownload: widget.onDownload,
+        );
+      },
       onLoadResource: (c, r) {
         final url = r.url?.toString();
         if (url == null) return;
