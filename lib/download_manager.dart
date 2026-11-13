@@ -12,7 +12,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'hls.dart';
 import 'models.dart';
 
+/// Pieces of a download started by an older version (no marker file).
 const int kSegments = 4;
+
+/// Big files are split into more pieces (more connections = more speed).
+const int kBigFileBytes = 16 << 20;
+const int kBigFileSegments = 8;
 const String _ua =
     'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) '
     'Chrome/120.0 Mobile Safari/537.36';
@@ -928,16 +933,17 @@ class DownloadManager extends ChangeNotifier {
 
   Future<void> _multiSegment(DownloadItem item, _Run run) async {
     final total = item.total;
-    final base = total ~/ kSegments;
+    final n = _segCountFor(item);
+    final base = total ~/ n;
     final starts = <int>[];
     final ends = <int>[];
-    for (var i = 0; i < kSegments; i++) {
+    for (var i = 0; i < n; i++) {
       starts.add(i * base);
-      ends.add(i == kSegments - 1 ? total - 1 : (i + 1) * base - 1);
+      ends.add(i == n - 1 ? total - 1 : (i + 1) * base - 1);
     }
 
-    run.segBytes = List.filled(kSegments, 0);
-    for (var i = 0; i < kSegments; i++) {
+    run.segBytes = List.filled(n, 0);
+    for (var i = 0; i < n; i++) {
       final f = File(_partPath(item, i));
       if (await f.exists()) {
         var len = await f.length();
@@ -958,7 +964,7 @@ class DownloadManager extends ChangeNotifier {
     try {
       await Future.wait(
         [
-          for (var i = 0; i < kSegments; i++)
+          for (var i = 0; i < n; i++)
             _downloadSegment(item, run, i, starts[i], ends[i]).catchError(
               (Object e, StackTrace st) {
                 if (!run.token.isCancelled) {
@@ -981,7 +987,7 @@ class DownloadManager extends ChangeNotifier {
     }
 
     // every piece must be complete before they are joined
-    for (var i = 0; i < kSegments; i++) {
+    for (var i = 0; i < n; i++) {
       if (run.segBytes[i] != ends[i] - starts[i] + 1) {
         throw const HttpException('Connection closed before the piece was complete');
       }
@@ -1226,11 +1232,12 @@ class DownloadManager extends ChangeNotifier {
   }
 
   Future<void> _merge(DownloadItem item, _Run run) async {
+    final n = _segCountFor(item);
     final out = File(item.savePath);
     if (await out.exists()) await out.delete();
     final sink = out.openWrite();
     try {
-      for (var i = 0; i < kSegments; i++) {
+      for (var i = 0; i < n; i++) {
         // paused or removed while joining: stop; the pieces are kept
         if (run.token.isCancelled && !run.failed) {
           throw DioException(
@@ -1255,7 +1262,7 @@ class DownloadManager extends ChangeNotifier {
       try {
         await out.delete();
       } catch (_) {}
-      for (var i = 0; i < kSegments; i++) {
+      for (var i = 0; i < n; i++) {
         try {
           final f = File(_partPath(item, i));
           if (await f.exists()) await f.delete();
@@ -1267,11 +1274,39 @@ class DownloadManager extends ChangeNotifier {
   }
 
   Future<void> _deleteParts(DownloadItem item) async {
-    for (var i = 0; i < kSegments; i++) {
+    final n = _segCountFor(item, create: false);
+    for (var i = 0; i < n; i++) {
       try {
         final f = File(_partPath(item, i));
         if (await f.exists()) await f.delete();
       } catch (_) {}
+    }
+    try {
+      final m = File(_segMarkerPath(item));
+      if (await m.exists()) await m.delete();
+    } catch (_) {}
+  }
+
+  String _segMarkerPath(DownloadItem item) =>
+      '${item.dirPath}/.${item.fileName}.segs';
+
+  /// How many pieces this download is split into. Decided once per download
+  /// (and remembered in a tiny marker file) so a resumed download always uses
+  /// the same split as the pieces already on disk.
+  int _segCountFor(DownloadItem item, {bool create = true}) {
+    try {
+      final marker = File(_segMarkerPath(item));
+      if (marker.existsSync()) {
+        final n = int.tryParse(marker.readAsStringSync().trim());
+        if (n != null && n >= 1 && n <= 32) return n;
+      }
+      // started by an older version: 4 pieces and no marker
+      if (File(_partPath(item, 0)).existsSync()) return kSegments;
+      final n = item.total >= kBigFileBytes ? kBigFileSegments : kSegments;
+      if (create) marker.writeAsStringSync('$n');
+      return n;
+    } catch (_) {
+      return kSegments;
     }
   }
 
