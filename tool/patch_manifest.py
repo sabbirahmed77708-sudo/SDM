@@ -2,6 +2,7 @@
 permissions, app label, the Share intent filter, the download foreground
 service, and our own MainActivity.kt / DownloadService.kt."""
 import glob
+import os
 import re
 import sys
 
@@ -101,6 +102,24 @@ if "DownloadService" not in xml:
     if "</application>" not in xml:
         sys.exit("AndroidManifest.xml has no </application> tag")
     xml = xml.replace("</application>", service + "    </application>", 1)
+
+# Our own FileProvider so downloaded files / the update APK can be handed to
+# the video player, installer, etc. from any storage path.
+if "SdmFileProvider" not in xml:
+    prov = (
+        f'    <provider android:name="{pkg}.SdmFileProvider"\n'
+        '        android:authorities="${applicationId}.sdmfiles"\n'
+        '        android:exported="false"\n'
+        '        android:grantUriPermissions="true">\n'
+        '        <meta-data android:name="android.support.FILE_PROVIDER_PATHS"\n'
+        '            android:resource="@xml/sdm_file_paths"/>\n'
+        '    </provider>\n'
+    )
+    xml = xml.replace("</application>", prov + "    </application>", 1)
+    os.makedirs("android/app/src/main/res/xml", exist_ok=True)
+    with open("android/app/src/main/res/xml/sdm_file_paths.xml", "w", encoding="utf-8") as f:
+        f.write('<?xml version="1.0" encoding="utf-8"?>\n<paths>\n'
+                '    <root-path name="root" path="."/>\n</paths>\n')
 
 with open(PATH, "w", encoding="utf-8") as f:
     f.write(xml)

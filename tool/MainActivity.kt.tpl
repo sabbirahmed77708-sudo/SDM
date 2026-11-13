@@ -28,6 +28,37 @@ import io.flutter.plugins.GeneratedPluginRegistrant
  * [DownloadService] (a foreground service) this keeps downloads running when the
  * app is in the background or has been swiped away.
  */
+class SdmFileProvider : androidx.core.content.FileProvider()
+
+/** Opens [path] with another app. Returns "ok", "noApp", "needInstallPermission", "missing" or "error". */
+fun openFileNative(ctx: Context, path: String?, mime: String?): String {
+    try {
+        if (path == null) return "missing"
+        val f = java.io.File(path)
+        if (!f.exists()) return "missing"
+        val isApk = mime == "application/vnd.android.package-archive"
+        if (isApk && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+            !ctx.packageManager.canRequestPackageInstalls()) {
+            val s = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                android.net.Uri.parse("package:" + ctx.packageName))
+            s.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            ctx.startActivity(s)
+            return "needInstallPermission"
+        }
+        val uri = androidx.core.content.FileProvider.getUriForFile(
+            ctx, ctx.packageName + ".sdmfiles", f)
+        val i = Intent(Intent.ACTION_VIEW)
+        i.setDataAndType(uri, mime ?: "*/*")
+        i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+        ctx.startActivity(i)
+        return "ok"
+    } catch (e: android.content.ActivityNotFoundException) {
+        return "noApp"
+    } catch (e: Exception) {
+        return "error"
+    }
+}
+
 class MainActivity : FlutterActivity() {
 
     companion object {
@@ -111,6 +142,8 @@ class MainActivity : FlutterActivity() {
         MethodChannel(messenger, "drom/app").setMethodCallHandler { call, result ->
             when (call.method) {
                 "apkPath" -> result.success(ctx.packageCodePath)
+                "openFile" -> result.success(
+                    openFileNative(ctx, call.argument<String>("path"), call.argument<String>("mime")))
                 // is this APK signed like the installed app? ("ok", "signature", "package", "invalid")
                 "apkCompat" -> result.success(apkCompat(ctx, call.argument<String>("path")))
                 else -> result.notImplemented()
