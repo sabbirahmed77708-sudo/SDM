@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 
 import 'browser_controller.dart';
 import '../l10n.dart';
@@ -84,6 +86,7 @@ class _MenuBody extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
 
     void close() => Navigator.pop(context);
+    final messenger = ScaffoldMessenger.maybeOf(context);
 
     Widget quick(IconData icon, String tip, VoidCallback? onTap,
             {bool highlight = false}) =>
@@ -167,6 +170,20 @@ class _MenuBody extends StatelessWidget {
               ),
               const Divider(height: 1),
               item(Icons.add_box_outlined, 'New Tab', () => browser.newTab()),
+              if (browser.closedUrls.isNotEmpty)
+                item(Icons.restore_page_outlined, 'Reopen Closed Tab',
+                    browser.reopenClosedTab),
+              if (onPage)
+                item(Icons.share_outlined, 'Share', () => Share.share(t.url)),
+              if (onPage)
+                item(Icons.link_rounded, 'Copy Link', () async {
+                  await Clipboard.setData(ClipboardData(text: t.url));
+                  messenger?.showSnackBar(SnackBar(
+                    behavior: SnackBarBehavior.floating,
+                    duration: const Duration(seconds: 2),
+                    content: Text(tr('Link copied')),
+                  ));
+                }),
               item(Icons.shield_outlined, 'Block Ads',
                   () => browser.setBlockAds(!browser.blockAds),
                   checked: browser.blockAds, keepOpen: true),

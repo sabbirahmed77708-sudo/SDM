@@ -75,6 +75,8 @@ class BrowserController extends ChangeNotifier {
   static final BrowserController instance = BrowserController._();
 
   final List<BrowserTab> tabs = [];
+  /// Addresses of recently closed tabs (newest last) for "Reopen Closed Tab".
+  final List<String> closedUrls = [];
   int active = 0;
 
   bool blockAds = false;
@@ -256,6 +258,10 @@ class BrowserController extends ChangeNotifier {
   void closeTab(int i) {
     if (i < 0 || i >= tabs.length) return;
     final t = tabs.removeAt(i);
+    if (!t.showHome && t.url.startsWith('http')) {
+      closedUrls.add(t.url);
+      if (closedUrls.length > 10) closedUrls.removeAt(0);
+    }
     if (tabs.isEmpty) {
       tabs.add(BrowserTab(id: _nextId()));
       active = 0;
@@ -268,6 +274,12 @@ class BrowserController extends ChangeNotifier {
     WidgetsBinding.instance.addPostFrameCallback((_) => t.dispose());
     saveTabs();
     notifyListeners();
+  }
+
+  /// Opens the most recently closed tab again.
+  void reopenClosedTab() {
+    if (closedUrls.isEmpty) return;
+    newTab(url: closedUrls.removeLast());
   }
 
   void closeTabById(String id) => closeTab(tabs.indexWhere((t) => t.id == id));
